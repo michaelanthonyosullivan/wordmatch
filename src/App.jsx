@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createDeck, pickWords } from './words.js'
 import Card from './Card.jsx'
 import Celebration from './Celebration.jsx'
+import Rules from './Rules.jsx'
 import Footer from './Footer.jsx'
 import {
   playFlip,
@@ -29,6 +30,7 @@ export default function App() {
   const [difficulty, setDifficulty] = useState('hard')
   // Easy mode only: word -> the exact 2 card ids already permanently revealed for it.
   const [partialCards, setPartialCards] = useState({})
+  const [showRules, setShowRules] = useState(false)
 
   const matchedCount = matchedWords.length
   const isWon = matchedCount === 8
@@ -260,6 +262,13 @@ export default function App() {
             <button type="button" className="ghost" onClick={handleNewWords}>
               New words
             </button>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => setShowRules(true)}
+            >
+              Rules
+            </button>
           </div>
         </div>
       </header>
@@ -295,6 +304,8 @@ export default function App() {
       )}
 
       {isWon && <Celebration tries={tries} onPlayAgain={handlePlayAgain} />}
+
+      {showRules && <Rules onClose={() => setShowRules(false)} />}
 
       <Footer />
     </div>
