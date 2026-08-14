@@ -26,6 +26,9 @@ export default function App() {
   const [result, setResult] = useState(null)
   const [toast, setToast] = useState('')
   const [soundOn, setSoundOn] = useState(true)
+  const [difficulty, setDifficulty] = useState('hard')
+  // Easy mode only: word -> the exact 2 card ids already permanently revealed for it.
+  const [partialCards, setPartialCards] = useState({})
 
   const matchedCount = matchedWords.length
   const isWon = matchedCount === 8
@@ -44,6 +47,44 @@ export default function App() {
     if (locked || isWon) return
     if (flippedIds.includes(card.id)) return
     if (matchedWords.includes(card.word)) return
+
+    // Easy mode: if this is the first pick of a fresh round and it completes an
+    // already-partial word (2 of its 3 cards are already permanently revealed),
+    // resolve it instantly instead of waiting to gather 3 picks. This also avoids
+    // a deadlock late in the game when fewer than 3 hidden cards remain.
+    if (
+      difficulty === 'easy' &&
+      flippedIds.length === 0 &&
+      partialCards[card.word]?.length === 2
+    ) {
+      setLocked(true)
+      setTries((count) => count + 1)
+      setFlippedIds([card.id])
+      playFlip(0)
+
+      setResult('match')
+      playMatch()
+      setToast(CHEERS[matchedCount] ?? 'Yes!')
+      if (matchedCount === 7) {
+        window.setTimeout(() => playWin(), 350)
+      }
+
+      window.setTimeout(() => {
+        setPartialCards((current) => {
+          const next = { ...current }
+          delete next[card.word]
+          return next
+        })
+        setMatchedWords((current) =>
+          current.includes(card.word) ? current : [...current, card.word],
+        )
+        setFlippedIds([])
+        setResult(null)
+        setLocked(false)
+      }, 650)
+      return
+    }
+
     if (flippedIds.length >= MATCH_SIZE) return
 
     const nextFlipped = [...flippedIds, card.id]
@@ -58,29 +99,75 @@ export default function App() {
     const words = nextFlipped.map(
       (id) => cards.find((item) => item.id === id).word,
     )
-    const isMatch = words[0] === words[1] && words[1] === words[2]
-    setResult(isMatch ? 'match' : 'miss')
 
-    if (isMatch) {
+    // Group the flipped card ids by word so we know exactly which ids form a pair.
+    const idsByWord = {}
+    nextFlipped.forEach((id) => {
+      const w = cards.find((item) => item.id === id).word
+      idsByWord[w] = idsByWord[w] ? [...idsByWord[w], id] : [id]
+    })
+
+    const completingPartials = []
+    const newPartialEntries = []
+
+    if (difficulty === 'easy') {
+      for (const [word, ids] of Object.entries(idsByWord)) {
+        if (matchedWords.includes(word)) continue
+        if (partialCards[word]?.length === 2) {
+          completingPartials.push(word)
+        } else if (ids.length === 2) {
+          newPartialEntries.push({ word, ids })
+        }
+      }
+    }
+
+    const isMatch = words[0] === words[1] && words[1] === words[2]
+    const hasFullMatch = isMatch || completingPartials.length > 0
+    const hasPartialMatch = newPartialEntries.length > 0
+
+    if (hasFullMatch) {
+      setResult('match')
       playMatch()
       setToast(CHEERS[matchedCount] ?? 'Yes!')
       if (matchedCount === 7) {
         window.setTimeout(() => playWin(), 350)
       }
+    } else if (hasPartialMatch) {
+      setResult(null)
+      playMatch()
+      setToast('Almost!')
     } else {
+      setResult('miss')
       playMiss()
     }
 
     window.setTimeout(() => {
-      if (isMatch) {
-        setMatchedWords((current) =>
-          current.includes(words[0]) ? current : [...current, words[0]],
-        )
+      if (hasFullMatch) {
+        completingPartials.forEach((word) => {
+          setPartialCards((current) => {
+            const next = { ...current }
+            delete next[word]
+            return next
+          })
+          setMatchedWords((current) =>
+            current.includes(word) ? current : [...current, word],
+          )
+        })
+        if (isMatch) {
+          setMatchedWords((current) =>
+            current.includes(words[0]) ? current : [...current, words[0]],
+          )
+        }
+      }
+      if (hasPartialMatch) {
+        newPartialEntries.forEach(({ word, ids }) => {
+          setPartialCards((current) => ({ ...current, [word]: ids }))
+        })
       }
       setFlippedIds([])
       setResult(null)
       setLocked(false)
-    }, isMatch ? 650 : FLIP_BACK_MS)
+    }, hasFullMatch ? 650 : FLIP_BACK_MS)
   }
 
   function startRound(nextWords = wordSet) {
@@ -88,6 +175,7 @@ export default function App() {
     setCards(createDeck(nextWords))
     setFlippedIds([])
     setMatchedWords([])
+    setPartialCards({})
     setLocked(false)
     setTries(0)
     setResult(null)
@@ -140,6 +228,22 @@ export default function App() {
           <div className="actions">
             <button
               type="button"
+              className={`ghost ${difficulty === 'easy' ? 'active' : ''}`}
+              onClick={() => { setDifficulty('easy'); startRound(wordSet) }}
+              aria-pressed={difficulty === 'easy'}
+            >
+              Easy
+            </button>
+            <button
+              type="button"
+              className={`ghost ${difficulty === 'hard' ? 'active' : ''}`}
+              onClick={() => { setDifficulty('hard'); startRound(wordSet) }}
+              aria-pressed={difficulty === 'hard'}
+            >
+              Hard
+            </button>
+            <button
+              type="button"
               className="ghost"
               onClick={() => setSoundOn((on) => !on)}
               aria-pressed={soundOn}
@@ -159,7 +263,11 @@ export default function App() {
       <main className="board" aria-label="Word matching cards" key={round}>
         {cards.map((card, index) => {
           const isMatched = matchedWords.includes(card.word)
-          const isFlipped = isMatched || flippedIds.includes(card.id)
+          const isPartial =
+            !isMatched &&
+            Boolean(partialCards[card.word]?.includes(card.id))
+          const isFlipped =
+            isMatched || flippedIds.includes(card.id) || isPartial
           return (
             <Card
               key={card.id}
@@ -167,6 +275,7 @@ export default function App() {
               index={index}
               flipped={isFlipped}
               matched={isMatched}
+              isPartial={isPartial}
               result={isFlipped ? result : null}
               disabled={locked || isFlipped || isWon}
               onClick={() => handleCardClick(card)}

@@ -251,6 +251,12 @@ h1 {
   transform: translateY(-1px);
 }
 
+.ghost.active {
+  background: #ffd166;
+  color: var(--ink);
+  font-weight: 800;
+}
+
 .board {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -348,8 +354,36 @@ h1 {
 }
 
 .card.is-matched .front {
-  border-color: var(--match);
-  background: #f3ffe8;
+  border-color: #2f8a1d;
+  background: linear-gradient(160deg, #9dec6e 0%, #5bc233 100%);
+}
+
+.card.is-matched .word {
+  color: #163d0a;
+}
+
+.card.is-partial .front {
+  border: clamp(3px, 0.7vw, 6px) dashed #b3760a;
+  background: linear-gradient(160deg, #ffd873 0%, #ffb020 100%);
+}
+
+.card.is-partial .word {
+  color: #5c3a00;
+}
+
+.partial-badge {
+  position: absolute;
+  top: 6%;
+  right: 8%;
+  background: #b3760a;
+  color: #fff8e1;
+  font-family: 'Baloo 2', Nunito, sans-serif;
+  font-size: clamp(0.55rem, 14cqmin, 0.85rem);
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.3em 0.5em;
+  border-radius: 999px;
+  letter-spacing: 0;
 }
 
 .toast {

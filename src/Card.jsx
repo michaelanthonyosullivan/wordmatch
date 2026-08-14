@@ -3,6 +3,7 @@ export default function Card({
   index,
   flipped,
   matched,
+  isPartial,
   result,
   disabled,
   onClick,
@@ -11,6 +12,7 @@ export default function Card({
     'card',
     flipped ? 'is-flipped' : '',
     matched ? 'is-matched' : '',
+    isPartial ? 'is-partial' : '',
     result === 'match' ? 'is-success' : '',
     result === 'miss' ? 'is-miss' : '',
   ]
@@ -32,6 +34,11 @@ export default function Card({
           <span className="sparkle">★</span>
         </span>
         <span className="face front">
+          {isPartial && (
+            <span className="partial-badge" aria-hidden="true">
+              2/3
+            </span>
+          )}
           <span className="word">{word}</span>
         </span>
       </span>
