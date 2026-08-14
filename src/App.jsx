@@ -48,19 +48,23 @@ export default function App() {
     if (flippedIds.includes(card.id)) return
     if (matchedWords.includes(card.word)) return
 
-    // Easy mode: if this is the first pick of a fresh round and it completes an
-    // already-partial word (2 of its 3 cards are already permanently revealed),
-    // resolve it instantly instead of waiting to gather 3 picks. This also avoids
-    // a deadlock late in the game when fewer than 3 hidden cards remain.
+    // Easy mode: if this click completes an already-partial word (2 of its 3
+    // cards are already permanently revealed), resolve it instantly rather than
+    // waiting for a full group of 3 picks — children need immediate feedback.
+    // This applies whether the completing card is the 1st or 2nd pick of the
+    // current group; any other card already mid-pick is left untouched and
+    // still waits for its own group to fill up. If this card happens to be the
+    // 3rd (final) pick of the group, the normal evaluation below already
+    // resolves it immediately, so no special-casing is needed there.
     if (
       difficulty === 'easy' &&
-      flippedIds.length === 0 &&
+      flippedIds.length < MATCH_SIZE - 1 &&
       partialCards[card.word]?.length === 2
     ) {
       setLocked(true)
       setTries((count) => count + 1)
-      setFlippedIds([card.id])
-      playFlip(0)
+      playFlip(flippedIds.length)
+      setFlippedIds((current) => [...current, card.id])
 
       setResult('match')
       playMatch()
@@ -78,7 +82,7 @@ export default function App() {
         setMatchedWords((current) =>
           current.includes(card.word) ? current : [...current, card.word],
         )
-        setFlippedIds([])
+        setFlippedIds((current) => current.filter((id) => id !== card.id))
         setResult(null)
         setLocked(false)
       }, 650)
