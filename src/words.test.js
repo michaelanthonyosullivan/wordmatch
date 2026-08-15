@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  WORD_BANK,
-  SET_SIZE,
-  COPIES_PER_WORD,
-  pickWords,
-  createDeck,
-} from './words.js'
+import { WORD_BANK, SET_SIZE, COPIES_PER_WORD, pickWords, createDeck } from './words.js'
 
 describe('pickWords', () => {
   it('returns SET_SIZE unique words from the bank', () => {

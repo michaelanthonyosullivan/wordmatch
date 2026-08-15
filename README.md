@@ -36,6 +36,16 @@ The game logic lives in small pure modules (`src/words.js`, `src/game.js`, `src/
 npm test
 ```
 
+## Lint & format
+
+[ESLint](https://eslint.org/) and [Prettier](https://prettier.io/) keep the code consistent and catch mistakes early:
+
+```bash
+npm run lint         # ESLint: problems in src/
+npm run format       # Prettier: rewrite files in place
+npm run format:check # Prettier: verify without modifying
+```
+
 ## Project structure
 
 - `src/App.jsx` — component state, sound/timing side effects, and rendering.

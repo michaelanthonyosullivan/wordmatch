@@ -122,7 +122,12 @@ button {
   width: min(140px, 28vw);
   height: min(140px, 28vw);
   border-radius: 50%;
-  background: radial-gradient(circle, #ffe082 0%, rgba(255, 224, 130, 0.15) 70%, transparent 72%);
+  background: radial-gradient(
+    circle,
+    #ffe082 0%,
+    rgba(255, 224, 130, 0.15) 70%,
+    transparent 72%
+  );
   animation: pulse 3.4s ease-in-out infinite;
 }
 
@@ -216,7 +221,9 @@ h1 {
 
 .star {
   color: #d7d0c2;
-  transition: color 0.25s ease, transform 0.25s ease;
+  transition:
+    color 0.25s ease,
+    transform 0.25s ease;
 }
 
 .star.is-lit {
@@ -320,11 +327,7 @@ h1 {
 .back {
   background:
     radial-gradient(circle at 30% 25%, #ffe082 0 14%, transparent 15%),
-    repeating-linear-gradient(
-      135deg,
-      #ff8a65 0 16px,
-      #ff7043 16px 32px
-    );
+    repeating-linear-gradient(135deg, #ff8a65 0 16px, #ff7043 16px 32px);
 }
 
 .sparkle {
@@ -372,7 +375,10 @@ h1 {
   border-color: #0b7bb1;
   border-width: clamp(4px, 1vw, 8px);
   background: linear-gradient(160deg, #bdeafb 0%, #7ec8e3 100%);
-  box-shadow: var(--shadow), 0 0 0 4px #118ab2, 0 0 0 8px rgba(17, 138, 178, 0.28),
+  box-shadow:
+    var(--shadow),
+    0 0 0 4px #118ab2,
+    0 0 0 8px rgba(17, 138, 178, 0.28),
     0 0 22px 4px rgba(17, 138, 178, 0.55);
   animation: seed-pulse 1.6s ease-in-out infinite;
 }
@@ -384,7 +390,10 @@ h1 {
 /* The gold pair keeps its gold look while still showing it is the reference
    for the hunt by getting a soft ring (no heavy blue treatment). */
 .card.is-seed.is-partial .front {
-  box-shadow: var(--shadow), 0 0 0 3px #118ab2, 0 0 16px 3px rgba(17, 138, 178, 0.45);
+  box-shadow:
+    var(--shadow),
+    0 0 0 3px #118ab2,
+    0 0 16px 3px rgba(17, 138, 178, 0.45);
 }
 
 .seed-badge {
@@ -405,11 +414,17 @@ h1 {
 @keyframes seed-pulse {
   0%,
   100% {
-    box-shadow: var(--shadow), 0 0 0 4px #118ab2, 0 0 0 8px rgba(17, 138, 178, 0.28),
+    box-shadow:
+      var(--shadow),
+      0 0 0 4px #118ab2,
+      0 0 0 8px rgba(17, 138, 178, 0.28),
       0 0 22px 4px rgba(17, 138, 178, 0.55);
   }
   50% {
-    box-shadow: var(--shadow), 0 0 0 5px #3ea8d8, 0 0 0 10px rgba(17, 138, 178, 0.45),
+    box-shadow:
+      var(--shadow),
+      0 0 0 5px #3ea8d8,
+      0 0 0 10px rgba(17, 138, 178, 0.45),
       0 0 34px 10px rgba(17, 138, 178, 0.75);
   }
 }

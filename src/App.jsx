@@ -6,16 +6,19 @@ import Card from './Card.jsx'
 import Celebration from './Celebration.jsx'
 import Rules from './Rules.jsx'
 import Footer from './Footer.jsx'
-import {
-  playFlip,
-  playMatch,
-  playMiss,
-  playWin,
-  setMuted,
-} from './sounds.js'
+import { playFlip, playMatch, playMiss, playWin, setMuted } from './sounds.js'
 
 const FLIP_BACK_MS = 1100
-const CHEERS = ['Nice!', 'Yes!', 'Great!', 'Wow!', 'Super!', 'Amazing!', 'Fantastic!', 'You did it!']
+const CHEERS = [
+  'Nice!',
+  'Yes!',
+  'Great!',
+  'Wow!',
+  'Super!',
+  'Amazing!',
+  'Fantastic!',
+  'You did it!',
+]
 
 export default function App() {
   const [wordSet, setWordSet] = useState(() => pickWords())
@@ -120,9 +123,14 @@ export default function App() {
       partialCards,
       mode,
     })
-    const { isMatch, completingPartials, newPartialEntries } = turn
-    const hasFullMatch = turn.hasFullMatch
-    const hasPartialMatch = turn.hasPartialMatch
+    const {
+      isMatch,
+      matchWord,
+      completingPartials,
+      newPartialEntries,
+      hasFullMatch,
+      hasPartialMatch,
+    } = turn
 
     if (hasFullMatch) {
       setResult('match')
@@ -140,33 +148,36 @@ export default function App() {
       playMiss()
     }
 
-    window.setTimeout(() => {
-      if (hasFullMatch) {
-        completingPartials.forEach((word) => {
-          setPartialCards((current) => {
-            const next = { ...current }
-            delete next[word]
-            return next
+    window.setTimeout(
+      () => {
+        if (hasFullMatch) {
+          completingPartials.forEach((word) => {
+            setPartialCards((current) => {
+              const next = { ...current }
+              delete next[word]
+              return next
+            })
+            setMatchedWords((current) =>
+              current.includes(word) ? current : [...current, word],
+            )
           })
-          setMatchedWords((current) =>
-            current.includes(word) ? current : [...current, word],
-          )
-        })
-        if (isMatch) {
-          setMatchedWords((current) =>
-            current.includes(words[0]) ? current : [...current, words[0]],
-          )
+          if (isMatch && matchWord) {
+            setMatchedWords((current) =>
+              current.includes(matchWord) ? current : [...current, matchWord],
+            )
+          }
         }
-      }
-      if (hasPartialMatch) {
-        newPartialEntries.forEach(({ word, ids }) => {
-          setPartialCards((current) => ({ ...current, [word]: ids }))
-        })
-      }
-      setFlippedIds([])
-      setResult(null)
-      setLocked(false)
-    }, hasFullMatch ? 650 : FLIP_BACK_MS)
+        if (hasPartialMatch) {
+          newPartialEntries.forEach(({ word, ids }) => {
+            setPartialCards((current) => ({ ...current, [word]: ids }))
+          })
+        }
+        setFlippedIds([])
+        setResult(null)
+        setLocked(false)
+      },
+      hasFullMatch ? 650 : FLIP_BACK_MS,
+    )
   }
 
   // ---- Find it! mode ----
@@ -327,7 +338,10 @@ export default function App() {
             <button
               type="button"
               className={`ghost ${mode === 'easy' ? 'active' : ''}`}
-              onClick={() => { setMode('easy'); startRound(wordSet) }}
+              onClick={() => {
+                setMode('easy')
+                startRound(wordSet)
+              }}
               aria-pressed={mode === 'easy'}
             >
               Easy
@@ -335,7 +349,10 @@ export default function App() {
             <button
               type="button"
               className={`ghost ${mode === 'hard' ? 'active' : ''}`}
-              onClick={() => { setMode('hard'); startRound(wordSet) }}
+              onClick={() => {
+                setMode('hard')
+                startRound(wordSet)
+              }}
               aria-pressed={mode === 'hard'}
             >
               Hard
@@ -343,7 +360,10 @@ export default function App() {
             <button
               type="button"
               className={`ghost ${mode === 'findit' ? 'active' : ''}`}
-              onClick={() => { setMode('findit'); startRound(wordSet) }}
+              onClick={() => {
+                setMode('findit')
+                startRound(wordSet)
+              }}
               aria-pressed={mode === 'findit'}
             >
               Find it!
@@ -362,11 +382,7 @@ export default function App() {
             <button type="button" className="ghost" onClick={handleNewWords}>
               New words
             </button>
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => setShowRules(true)}
-            >
+            <button type="button" className="ghost" onClick={() => setShowRules(true)}>
               Rules
             </button>
           </div>
@@ -377,8 +393,7 @@ export default function App() {
         {cards.map((card, index) => {
           const isMatched = matchedWords.includes(card.word)
           const isPartial =
-            !isMatched &&
-            Boolean(partialCards[card.word]?.includes(card.id))
+            !isMatched && Boolean(partialCards[card.word]?.includes(card.id))
           // In Find it! the reference for the current hunt is either the seed
           // tile or, once a pair is found, the gold pair itself — keep the
           // seed ring on it so the child knows what word to look for.
@@ -391,13 +406,18 @@ export default function App() {
           const isCluster = mode === 'findit' && clusterIds.includes(card.id)
           const isMiss = mode === 'findit' && card.id === missId
           const isFlipped =
-            isMatched || flippedIds.includes(card.id) || isPartial ||
-            isSeed || isCluster || isMiss
+            isMatched ||
+            flippedIds.includes(card.id) ||
+            isPartial ||
+            isSeed ||
+            isCluster ||
+            isMiss
           // In Find it! the seed stays disabled (it's the reference card), but
           // cluster tiles are face-up yet still tappable; nothing else on the
           // board can be tapped while a cluster is open.
           const disabled =
-            locked || isWon ||
+            locked ||
+            isWon ||
             (isFlipped && !isCluster) ||
             (mode === 'findit' && clusterIds.length > 0 && !isCluster)
           return (

@@ -14,12 +14,20 @@ function makeDeck(words) {
 const CARDS = makeDeck(['cat', 'dog', 'fox', 'owl', 'hen', 'egg', 'ant', 'bug'])
 
 function turn({ flippedIds, matchedWords = [], partialCards = {}, mode = 'hard' }) {
-  return resolveClassicTurn({ flippedIds, cards: CARDS, matchedWords, partialCards, mode })
+  return resolveClassicTurn({
+    flippedIds,
+    cards: CARDS,
+    matchedWords,
+    partialCards,
+    mode,
+  })
 }
 
 describe('completesPartialInstantly', () => {
   it('is true when exactly two cards of the word are already revealed', () => {
-    expect(completesPartialInstantly({ word: 'cat' }, { cat: ['cat-0', 'cat-1'] })).toBe(true)
+    expect(completesPartialInstantly({ word: 'cat' }, { cat: ['cat-0', 'cat-1'] })).toBe(
+      true,
+    )
   })
 
   it('is false when no partial match exists', () => {
@@ -28,11 +36,17 @@ describe('completesPartialInstantly', () => {
 })
 
 describe('resolveClassicTurn — full match', () => {
-  it('detects three of a kind', () => {
+  it('detects three of a kind and reports the matched word', () => {
     const r = turn({ flippedIds: ['cat-0', 'cat-1', 'cat-2'] })
     expect(r.isMatch).toBe(true)
     expect(r.hasFullMatch).toBe(true)
     expect(r.hasPartialMatch).toBe(false)
+    expect(r.matchWord).toBe('cat')
+  })
+
+  it('reports no matchWord for a miss', () => {
+    const r = turn({ flippedIds: ['cat-0', 'dog-0', 'fox-0'] })
+    expect(r.matchWord).toBeNull()
   })
 })
 

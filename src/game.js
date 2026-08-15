@@ -46,6 +46,7 @@ export function resolveClassicTurn({
   const isMatch = words[0] === words[1] && words[1] === words[2]
   return {
     isMatch,
+    matchWord: isMatch ? words[0] : null,
     completingPartials,
     newPartialEntries,
     hasFullMatch: isMatch || completingPartials.length > 0,

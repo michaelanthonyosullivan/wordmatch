@@ -96,7 +96,9 @@ export function chooseAnswerId(
 // so compute the real column count to keep clusters visually tight everywhere.
 export function getBoardColumns() {
   if (typeof window === 'undefined') return BOARD_COLUMNS
-  if (window.matchMedia('(orientation: landscape) and (max-height: 520px)').matches) return 8
-  if (window.matchMedia('(max-width: 720px) and (orientation: portrait)').matches) return 4
+  if (window.matchMedia('(orientation: landscape) and (max-height: 520px)').matches)
+    return 8
+  if (window.matchMedia('(max-width: 720px) and (orientation: portrait)').matches)
+    return 4
   return BOARD_COLUMNS
 }
