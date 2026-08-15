@@ -368,6 +368,52 @@ h1 {
   background: linear-gradient(160deg, #ffd873 0%, #ffb020 100%);
 }
 
+.card.is-seed:not(.is-partial) .front {
+  border-color: #0b7bb1;
+  border-width: clamp(4px, 1vw, 8px);
+  background: linear-gradient(160deg, #bdeafb 0%, #7ec8e3 100%);
+  box-shadow: var(--shadow), 0 0 0 4px #118ab2, 0 0 0 8px rgba(17, 138, 178, 0.28),
+    0 0 22px 4px rgba(17, 138, 178, 0.55);
+  animation: seed-pulse 1.6s ease-in-out infinite;
+}
+
+.card.is-seed:not(.is-partial) .word {
+  color: #0b3f57;
+}
+
+/* The gold pair keeps its gold look while still showing it is the reference
+   for the hunt by getting a soft ring (no heavy blue treatment). */
+.card.is-seed.is-partial .front {
+  box-shadow: var(--shadow), 0 0 0 3px #118ab2, 0 0 16px 3px rgba(17, 138, 178, 0.45);
+}
+
+.seed-badge {
+  position: absolute;
+  top: 6%;
+  left: 8%;
+  background: #0b7bb1;
+  color: #fff;
+  font-family: 'Baloo 2', Nunito, sans-serif;
+  font-size: clamp(0.55rem, 14cqmin, 0.85rem);
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.3em 0.55em;
+  border-radius: 999px;
+  letter-spacing: 0;
+}
+
+@keyframes seed-pulse {
+  0%,
+  100% {
+    box-shadow: var(--shadow), 0 0 0 4px #118ab2, 0 0 0 8px rgba(17, 138, 178, 0.28),
+      0 0 22px 4px rgba(17, 138, 178, 0.55);
+  }
+  50% {
+    box-shadow: var(--shadow), 0 0 0 5px #3ea8d8, 0 0 0 10px rgba(17, 138, 178, 0.45),
+      0 0 34px 10px rgba(17, 138, 178, 0.75);
+  }
+}
+
 .card.is-partial .word {
   color: #5c3a00;
 }

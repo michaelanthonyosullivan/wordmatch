@@ -4,6 +4,7 @@ export default function Card({
   flipped,
   matched,
   isPartial,
+  isSeed,
   result,
   disabled,
   onClick,
@@ -13,6 +14,7 @@ export default function Card({
     flipped ? 'is-flipped' : '',
     matched ? 'is-matched' : '',
     isPartial ? 'is-partial' : '',
+    isSeed ? 'is-seed' : '',
     result === 'match' ? 'is-success' : '',
     result === 'miss' ? 'is-miss' : '',
   ]
@@ -37,6 +39,11 @@ export default function Card({
           {isPartial && (
             <span className="partial-badge" aria-hidden="true">
               2/3
+            </span>
+          )}
+          {isSeed && !isPartial && (
+            <span className="seed-badge" aria-hidden="true">
+              Find
             </span>
           )}
           <span className="word">{word}</span>

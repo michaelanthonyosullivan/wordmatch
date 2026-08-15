@@ -14,7 +14,7 @@ import {
 
 const MATCH_SIZE = 3
 const FLIP_BACK_MS = 1100
-const CHEERS = ['Nice!', 'Yes!', 'Great!', 'Wow!', 'Super!', 'Amazing!', 'Almost!', 'You did it!']
+const CHEERS = ['Nice!', 'Yes!', 'Great!', 'Wow!', 'Super!', 'Amazing!', 'Fantastic!', 'You did it!']
 
 export default function App() {
   const [wordSet, setWordSet] = useState(() => pickWords())
@@ -27,10 +27,15 @@ export default function App() {
   const [result, setResult] = useState(null)
   const [toast, setToast] = useState('')
   const [soundOn, setSoundOn] = useState(true)
-  const [difficulty, setDifficulty] = useState('hard')
+  // 'hard' | 'easy' | 'findit' — the three game modes.
+  const [mode, setMode] = useState('hard')
   // Easy mode only: word -> the exact 2 card ids already permanently revealed for it.
   const [partialCards, setPartialCards] = useState({})
   const [showRules, setShowRules] = useState(false)
+  // Find it! mode state.
+  const [findSeedId, setFindSeedId] = useState(null) // tile the child clicked to start a hunt
+  const [clusterIds, setClusterIds] = useState([]) // tiles opened up around the answer
+  const [missId, setMissId] = useState(null) // tile briefly revealed after a wrong pick
 
   const matchedCount = matchedWords.length
   const isWon = matchedCount === 8
@@ -50,6 +55,11 @@ export default function App() {
     if (flippedIds.includes(card.id)) return
     if (matchedWords.includes(card.word)) return
 
+    if (mode === 'findit') {
+      handleFindItClick(card)
+      return
+    }
+
     // Easy mode: if this click completes an already-partial word (2 of its 3
     // cards are already permanently revealed), resolve it instantly rather than
     // waiting for a full group of 3 picks — children need immediate feedback.
@@ -59,7 +69,7 @@ export default function App() {
     // 3rd (final) pick of the group, the normal evaluation below already
     // resolves it immediately, so no special-casing is needed there.
     if (
-      difficulty === 'easy' &&
+      mode === 'easy' &&
       flippedIds.length < MATCH_SIZE - 1 &&
       partialCards[card.word]?.length === 2
     ) {
@@ -116,7 +126,7 @@ export default function App() {
     const completingPartials = []
     const newPartialEntries = []
 
-    if (difficulty === 'easy') {
+    if (mode === 'easy') {
       for (const [word, ids] of Object.entries(idsByWord)) {
         if (matchedWords.includes(word)) continue
         if (partialCards[word]?.length === 2) {
@@ -141,7 +151,7 @@ export default function App() {
     } else if (hasPartialMatch) {
       setResult(null)
       playMatch()
-      setToast('Almost!')
+      setToast('Great pair!')
     } else {
       setResult('miss')
       playMiss()
@@ -176,12 +186,162 @@ export default function App() {
     }, hasFullMatch ? 650 : FLIP_BACK_MS)
   }
 
+  // ---- Find it! mode ----
+
+  // How visually alike two words are, so we can pick distractors that force a
+  // child to actually look at letter shapes instead of scanning first letters.
+  function wordSimilarity(a, b) {
+    let score = 0
+    if (a[0] === b[0]) score += 3
+    if (a[a.length - 1] === b[a.length - 1]) score += 3
+    if (a.length > 2 && b.length > 2 && a[1] === b[1]) score += 2
+    const shared = new Set([...a].filter((ch) => b.includes(ch)))
+    return score + shared.size
+  }
+
+  // Build the "tight cluster": the answer tile plus up to five other face-down
+  // tiles near it, preferring distractors that look like the target word.
+  // The other copy of the target word is deliberately kept out so there is
+  // exactly one matching tile in the cluster. seedId is passed explicitly so
+  // the seed is never selected as an answer even though the state update is
+  // asynchronous.
+  function buildCluster(answerId, targetWord, seedId = null) {
+    const answerIndex = cards.findIndex((c) => c.id === answerId)
+    const col = answerIndex % 6
+    const row = Math.floor(answerIndex / 6)
+    const pool = cards
+      .map((c, i) => ({
+        c,
+        dist: Math.abs((i % 6) - col) + Math.abs(Math.floor(i / 6) - row),
+      }))
+      .filter(({ c }) => {
+        if (c.id === answerId) return false
+        if (seedId && c.id === seedId) return false
+        if (matchedWords.includes(c.word)) return false
+        if (partialCards[c.word]?.includes(c.id)) return false
+        if (c.word === targetWord) return false
+        return true
+      })
+      .sort(
+        (a, b) =>
+          a.dist - b.dist ||
+          wordSimilarity(b.c.word, targetWord) -
+            wordSimilarity(a.c.word, targetWord),
+      )
+    // Pick up to five distractors, each a distinct word so there is exactly
+    // one tile showing the target word.
+    const chosen = []
+    const usedWords = new Set([targetWord])
+    for (const { c } of pool) {
+      if (chosen.length >= 5) break
+      if (usedWords.has(c.word)) continue
+      usedWords.add(c.word)
+      chosen.push(c.id)
+    }
+    return [answerId, ...chosen]
+  }
+
+  // Pick which of the two remaining copies of a word will be the answer in the
+  // cluster (prefer the one that can form a fuller cluster).
+  function chooseAnswerId(targetWord, seedId) {
+    const copies = cards.filter(
+      (c) =>
+        c.word === targetWord &&
+        c.id !== seedId &&
+        !matchedWords.includes(c.word) &&
+        !partialCards[targetWord]?.includes(c.id),
+    )
+    if (copies.length === 0) return null
+    if (copies.length === 1) return copies[0].id
+    const first = buildCluster(copies[0].id, targetWord, seedId).length
+    const second = buildCluster(copies[1].id, targetWord, seedId).length
+    return first >= second ? copies[0].id : copies[1].id
+  }
+
+  function handleFindItClick(card) {
+    if (locked || isWon) return
+    if (matchedWords.includes(card.word)) return
+    if (missId === card.id) return
+
+    // No cluster open yet → this click chooses the seed word to hunt.
+    if (clusterIds.length === 0) {
+      if (Object.keys(partialCards).length > 0) return
+      playFlip(0)
+      const seedId = card.id
+      const answerId = chooseAnswerId(card.word, seedId)
+      if (answerId) {
+        setFindSeedId(seedId)
+        setClusterIds(buildCluster(answerId, card.word, seedId))
+      }
+      return
+    }
+
+    // A cluster is open → the child must pick the tile matching the target word.
+    const targetWord = findSeedId
+      ? cards.find((c) => c.id === findSeedId).word
+      : Object.keys(partialCards)[0]
+
+    // Wrong pick: gently reveal the tile, then flip it back; keep trying.
+    if (card.word !== targetWord) {
+      setTries((count) => count + 1)
+      setMissId(card.id)
+      setClusterIds((current) => current.filter((id) => id !== card.id))
+      playMiss()
+      setToast('Try again!')
+      window.setTimeout(() => {
+        setMissId((id) => (id === card.id ? null : id))
+      }, 550)
+      return
+    }
+
+    // Correct pick.
+    setTries((count) => count + 1)
+    setLocked(true)
+
+    if (findSeedId) {
+      // Found the second copy — reveal the pair in gold, then open a fresh
+      // cluster so the child can find the third copy themselves.
+      const seedId = findSeedId
+      const word = targetWord
+      playMatch()
+      setToast('Great pair!')
+      window.setTimeout(() => {
+        setPartialCards({ [word]: [seedId, card.id] })
+        setFindSeedId(null)
+        const remaining = cards.find(
+          (c) => c.word === word && c.id !== seedId && c.id !== card.id,
+        )
+        setClusterIds(remaining ? buildCluster(remaining.id, word) : [])
+        setLocked(false)
+      }, 1100)
+    } else {
+      // Found the third copy — the whole set is now matched.
+      const word = targetWord
+      playMatch()
+      setToast(CHEERS[matchedWords.length] ?? 'Yes!')
+      if (matchedWords.length === 7) {
+        window.setTimeout(() => playWin(), 350)
+      }
+      window.setTimeout(() => {
+        setPartialCards({})
+        setMatchedWords((current) =>
+          current.includes(word) ? current : [...current, word],
+        )
+        setClusterIds([])
+        setLocked(false)
+      }, 650)
+    }
+  }
+
   function startRound(nextWords = wordSet) {
     setWordSet(nextWords)
     setCards(createDeck(nextWords))
     setFlippedIds([])
     setMatchedWords([])
     setPartialCards({})
+    setFindSeedId(null)
+    setClusterIds([])
+    setMissId(null)
     setLocked(false)
     setTries(0)
     setResult(null)
@@ -234,19 +394,27 @@ export default function App() {
           <div className="actions">
             <button
               type="button"
-              className={`ghost ${difficulty === 'easy' ? 'active' : ''}`}
-              onClick={() => { setDifficulty('easy'); startRound(wordSet) }}
-              aria-pressed={difficulty === 'easy'}
+              className={`ghost ${mode === 'easy' ? 'active' : ''}`}
+              onClick={() => { setMode('easy'); startRound(wordSet) }}
+              aria-pressed={mode === 'easy'}
             >
               Easy
             </button>
             <button
               type="button"
-              className={`ghost ${difficulty === 'hard' ? 'active' : ''}`}
-              onClick={() => { setDifficulty('hard'); startRound(wordSet) }}
-              aria-pressed={difficulty === 'hard'}
+              className={`ghost ${mode === 'hard' ? 'active' : ''}`}
+              onClick={() => { setMode('hard'); startRound(wordSet) }}
+              aria-pressed={mode === 'hard'}
             >
               Hard
+            </button>
+            <button
+              type="button"
+              className={`ghost ${mode === 'findit' ? 'active' : ''}`}
+              onClick={() => { setMode('findit'); startRound(wordSet) }}
+              aria-pressed={mode === 'findit'}
+            >
+              Find it!
             </button>
             <button
               type="button"
@@ -279,8 +447,27 @@ export default function App() {
           const isPartial =
             !isMatched &&
             Boolean(partialCards[card.word]?.includes(card.id))
+          // In Find it! the reference for the current hunt is either the seed
+          // tile or, once a pair is found, the gold pair itself — keep the
+          // seed ring on it so the child knows what word to look for.
+          const isSeed =
+            mode === 'findit' &&
+            (card.id === findSeedId ||
+              (findSeedId === null &&
+                Object.keys(partialCards).length > 0 &&
+                partialCards[card.word]?.includes(card.id)))
+          const isCluster = mode === 'findit' && clusterIds.includes(card.id)
+          const isMiss = mode === 'findit' && card.id === missId
           const isFlipped =
-            isMatched || flippedIds.includes(card.id) || isPartial
+            isMatched || flippedIds.includes(card.id) || isPartial ||
+            isSeed || isCluster || isMiss
+          // In Find it! the seed stays disabled (it's the reference card), but
+          // cluster tiles are face-up yet still tappable; nothing else on the
+          // board can be tapped while a cluster is open.
+          const disabled =
+            locked || isWon ||
+            (isFlipped && !isCluster) ||
+            (mode === 'findit' && clusterIds.length > 0 && !isCluster)
           return (
             <Card
               key={card.id}
@@ -289,8 +476,9 @@ export default function App() {
               flipped={isFlipped}
               matched={isMatched}
               isPartial={isPartial}
-              result={isFlipped ? result : null}
-              disabled={locked || isFlipped || isWon}
+              isSeed={isSeed}
+              result={isFlipped ? (isMiss ? 'miss' : result) : null}
+              disabled={disabled}
               onClick={() => handleCardClick(card)}
             />
           )

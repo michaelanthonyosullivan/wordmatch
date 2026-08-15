@@ -67,6 +67,16 @@ export default function Rules({ onClose }) {
         </section>
 
         <section className="rules-section">
+          <h3>🔍 Find it!</h3>
+          <p>
+            This mode is all about spotting the word yourself! Tap any card
+            to flip it — six new cards open up nearby, and only one of them
+            shows the same word. You pick the match! Find the third card the
+            same way to finish the set.
+          </p>
+        </section>
+
+        <section className="rules-section">
           <h3>⭐ Stars &amp; tries</h3>
           <p>
             Each star lights up when a word is fully found. Tries count how
