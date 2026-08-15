@@ -27,3 +27,20 @@ npm run dev
 ```
 
 Then open the local URL Vite prints, usually `http://localhost:5173`.
+
+## Tests
+
+The game logic lives in small pure modules (`src/words.js`, `src/game.js`, `src/findit.js`) so it can be unit-tested without a browser:
+
+```bash
+npm test
+```
+
+## Project structure
+
+- `src/App.jsx` — component state, sound/timing side effects, and rendering.
+- `src/game.js` — pure classic-mode rules (Easy/Hard turn resolution, partial matching).
+- `src/findit.js` — pure Find it! rules (cluster building, distractor selection, word similarity).
+- `src/words.js` — word bank, deck creation, and word selection.
+- `src/Card.jsx`, `src/Celebration.jsx`, `src/Rules.jsx`, `src/Footer.jsx`, `src/sounds.js` — UI and audio pieces.
+- `src/*.test.js` — Vitest unit tests for the pure modules.

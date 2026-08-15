@@ -50,7 +50,7 @@ export default function Rules({ onClose }) {
             </div>
             <p>
               <strong>Hard</strong> — only a full set of three matching cards
-              stays revealed, just like the classic game.
+              stays revealed.
             </p>
           </div>
           <div className="rules-demo">
@@ -70,9 +70,9 @@ export default function Rules({ onClose }) {
           <h3>🔍 Find it!</h3>
           <p>
             This mode is all about spotting the word yourself! Tap any card
-            to flip it — six new cards open up nearby, and only one of them
-            shows the same word. You pick the match! Find the third card the
-            same way to finish the set.
+            to flip it — a group of new cards opens up nearby, and only one of
+            them shows the same word. You pick the match! Find the third card
+            the same way to finish the set.
           </p>
         </section>
 

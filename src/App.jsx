@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createDeck, pickWords } from './words.js'
+import { MATCH_SIZE, completesPartialInstantly, resolveClassicTurn } from './game.js'
+import { buildCluster, chooseAnswerId, getBoardColumns } from './findit.js'
 import Card from './Card.jsx'
 import Celebration from './Celebration.jsx'
 import Rules from './Rules.jsx'
@@ -12,7 +14,6 @@ import {
   setMuted,
 } from './sounds.js'
 
-const MATCH_SIZE = 3
 const FLIP_BACK_MS = 1100
 const CHEERS = ['Nice!', 'Yes!', 'Great!', 'Wow!', 'Super!', 'Amazing!', 'Fantastic!', 'You did it!']
 
@@ -71,7 +72,7 @@ export default function App() {
     if (
       mode === 'easy' &&
       flippedIds.length < MATCH_SIZE - 1 &&
-      partialCards[card.word]?.length === 2
+      completesPartialInstantly(card, partialCards)
     ) {
       setLocked(true)
       setTries((count) => count + 1)
@@ -112,34 +113,16 @@ export default function App() {
     setLocked(true)
     setTries((count) => count + 1)
 
-    const words = nextFlipped.map(
-      (id) => cards.find((item) => item.id === id).word,
-    )
-
-    // Group the flipped card ids by word so we know exactly which ids form a pair.
-    const idsByWord = {}
-    nextFlipped.forEach((id) => {
-      const w = cards.find((item) => item.id === id).word
-      idsByWord[w] = idsByWord[w] ? [...idsByWord[w], id] : [id]
+    const turn = resolveClassicTurn({
+      flippedIds: nextFlipped,
+      cards,
+      matchedWords,
+      partialCards,
+      mode,
     })
-
-    const completingPartials = []
-    const newPartialEntries = []
-
-    if (mode === 'easy') {
-      for (const [word, ids] of Object.entries(idsByWord)) {
-        if (matchedWords.includes(word)) continue
-        if (partialCards[word]?.length === 2) {
-          completingPartials.push(word)
-        } else if (ids.length === 2) {
-          newPartialEntries.push({ word, ids })
-        }
-      }
-    }
-
-    const isMatch = words[0] === words[1] && words[1] === words[2]
-    const hasFullMatch = isMatch || completingPartials.length > 0
-    const hasPartialMatch = newPartialEntries.length > 0
+    const { isMatch, completingPartials, newPartialEntries } = turn
+    const hasFullMatch = turn.hasFullMatch
+    const hasPartialMatch = turn.hasPartialMatch
 
     if (hasFullMatch) {
       setResult('match')
@@ -188,76 +171,6 @@ export default function App() {
 
   // ---- Find it! mode ----
 
-  // How visually alike two words are, so we can pick distractors that force a
-  // child to actually look at letter shapes instead of scanning first letters.
-  function wordSimilarity(a, b) {
-    let score = 0
-    if (a[0] === b[0]) score += 3
-    if (a[a.length - 1] === b[a.length - 1]) score += 3
-    if (a.length > 2 && b.length > 2 && a[1] === b[1]) score += 2
-    const shared = new Set([...a].filter((ch) => b.includes(ch)))
-    return score + shared.size
-  }
-
-  // Build the "tight cluster": the answer tile plus up to five other face-down
-  // tiles near it, preferring distractors that look like the target word.
-  // The other copy of the target word is deliberately kept out so there is
-  // exactly one matching tile in the cluster. seedId is passed explicitly so
-  // the seed is never selected as an answer even though the state update is
-  // asynchronous.
-  function buildCluster(answerId, targetWord, seedId = null) {
-    const answerIndex = cards.findIndex((c) => c.id === answerId)
-    const col = answerIndex % 6
-    const row = Math.floor(answerIndex / 6)
-    const pool = cards
-      .map((c, i) => ({
-        c,
-        dist: Math.abs((i % 6) - col) + Math.abs(Math.floor(i / 6) - row),
-      }))
-      .filter(({ c }) => {
-        if (c.id === answerId) return false
-        if (seedId && c.id === seedId) return false
-        if (matchedWords.includes(c.word)) return false
-        if (partialCards[c.word]?.includes(c.id)) return false
-        if (c.word === targetWord) return false
-        return true
-      })
-      .sort(
-        (a, b) =>
-          a.dist - b.dist ||
-          wordSimilarity(b.c.word, targetWord) -
-            wordSimilarity(a.c.word, targetWord),
-      )
-    // Pick up to five distractors, each a distinct word so there is exactly
-    // one tile showing the target word.
-    const chosen = []
-    const usedWords = new Set([targetWord])
-    for (const { c } of pool) {
-      if (chosen.length >= 5) break
-      if (usedWords.has(c.word)) continue
-      usedWords.add(c.word)
-      chosen.push(c.id)
-    }
-    return [answerId, ...chosen]
-  }
-
-  // Pick which of the two remaining copies of a word will be the answer in the
-  // cluster (prefer the one that can form a fuller cluster).
-  function chooseAnswerId(targetWord, seedId) {
-    const copies = cards.filter(
-      (c) =>
-        c.word === targetWord &&
-        c.id !== seedId &&
-        !matchedWords.includes(c.word) &&
-        !partialCards[targetWord]?.includes(c.id),
-    )
-    if (copies.length === 0) return null
-    if (copies.length === 1) return copies[0].id
-    const first = buildCluster(copies[0].id, targetWord, seedId).length
-    const second = buildCluster(copies[1].id, targetWord, seedId).length
-    return first >= second ? copies[0].id : copies[1].id
-  }
-
   function handleFindItClick(card) {
     if (locked || isWon) return
     if (matchedWords.includes(card.word)) return
@@ -268,10 +181,21 @@ export default function App() {
       if (Object.keys(partialCards).length > 0) return
       playFlip(0)
       const seedId = card.id
-      const answerId = chooseAnswerId(card.word, seedId)
+      const answerId = chooseAnswerId(cards, card.word, seedId, {
+        matchedWords,
+        partialCards,
+        columns: getBoardColumns(),
+      })
       if (answerId) {
         setFindSeedId(seedId)
-        setClusterIds(buildCluster(answerId, card.word, seedId))
+        setClusterIds(
+          buildCluster(cards, answerId, card.word, {
+            seedId,
+            matchedWords,
+            partialCards,
+            columns: getBoardColumns(),
+          }),
+        )
       }
       return
     }
@@ -311,7 +235,15 @@ export default function App() {
         const remaining = cards.find(
           (c) => c.word === word && c.id !== seedId && c.id !== card.id,
         )
-        setClusterIds(remaining ? buildCluster(remaining.id, word) : [])
+        setClusterIds(
+          remaining
+            ? buildCluster(cards, remaining.id, word, {
+                matchedWords,
+                partialCards,
+                columns: getBoardColumns(),
+              })
+            : [],
+        )
         setLocked(false)
       }, 1100)
     } else {

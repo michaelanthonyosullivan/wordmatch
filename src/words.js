@@ -10,6 +10,7 @@ export const WORD_BANK = [
 ]
 
 export const SET_SIZE = 8
+export const COPIES_PER_WORD = 3
 
 function shuffle(items) {
   const next = [...items]
@@ -29,7 +30,7 @@ export function pickWords(exclude = []) {
 export function createDeck(words) {
   const set = words ?? pickWords()
   const cards = set.flatMap((word) =>
-    [0, 1, 2].map((copy) => ({
+    Array.from({ length: COPIES_PER_WORD }, (_, copy) => ({
       id: `${word}-${copy}-${crypto.randomUUID()}`,
       word,
     })),
